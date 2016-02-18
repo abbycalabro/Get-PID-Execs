@@ -4,17 +4,18 @@
 #include <string>
 #include <cstring>
 #include <unistd.h>
-#include <map>
+#include <cerrno>
+#include <cstdio>
+#include <vector>
 
 using namespace std;
 
 int main(int argc, char *argv[]) {
-	int pid;
+	int pid, count, start_pos, target;
 	string pid_string, path;
 	const char *c_path;
 	char buf[512];
-	int count; 
-	//map<int, string> pid_execs;
+	static const size_t npos = -1;
 
 	//open /proc/ directory
 	struct dirent *current;
@@ -29,18 +30,21 @@ int main(int argc, char *argv[]) {
 		if(pid > 0) { 
 			pid_string = current->d_name;
 			path = "/proc/" + pid_string + "/exe";
-			const char *c_path = path.c_str();
+			c_path = path.c_str();
 			
+			//read exe symlink 
 			count = readlink(c_path, buf, sizeof(buf) - 1);
-			
-			//print pid with corresponding exe symlink location
+
+			//print pid with corresponding symlink target for paths containing "sudo"
 			if(count >= 0) { 
-				buf[count] = '\0';		
-				cout << pid << ": " << buf << endl;
+				buf[count] = '\0';
+				string target = buf;	
+
+				if(target.find("sudo") != npos)
+					cout << "pid: " << pid << " " << target << endl;
 			}
-			else 
-				cout << pid << ": no symlink found\n";
-		
+			else if(count != -1)
+				cout << "Error calling readlink()\n";
 		}
 	}
 
