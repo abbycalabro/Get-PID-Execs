@@ -6,16 +6,18 @@
 #include <unistd.h>
 #include <cerrno>
 #include <cstdio>
-#include <vector>
+#include <fstream>
+#include <sstream>
 
 using namespace std;
 
 int main(int argc, char *argv[]) {
-	int pid, count, start_pos, target;
-	string pid_string, path;
+	int pid, count, start, end;
+	string pid_string, path, ppid, target, result, new_input;
 	const char *c_path;
 	char buf[512];
 	static const size_t npos = -1;
+	ifstream status;
 
 	//open /proc/ directory
 	struct dirent *current;
@@ -32,22 +34,40 @@ int main(int argc, char *argv[]) {
 			path = "/proc/" + pid_string + "/exe";
 			c_path = path.c_str();
 			
-			//read exe symlink 
+			//read /proc/pid/exe symlink 
 			count = readlink(c_path, buf, sizeof(buf) - 1);
 
-			//print pid with corresponding symlink target for paths containing "sudo"
+			//print pid and parent pid for paths containing "sudo"
 			if(count >= 0) { 
 				buf[count] = '\0';
-				string target = buf;	
+				target = buf;	
+				ppid; 
 
-				if(target.find("sudo") != npos)
-					cout << "pid: " << pid << " " << target << endl;
+				if(target.find("sudo") != npos) {
+					//get ppid of current process
+					status.open("/proc/" + pid_string + "/status");
+					if(status.is_open()) {
+						while(!status.eof()) {
+							status >> new_input;
+							result += new_input;
+						}
+					}
+					else
+						cout << "Error opening /proc/" + pid_string + "/status\n";
+					//parse for ppid
+					start = result.find("PPid:") + 5;
+					end = result.find("Tracer");
+					ppid = result.substr(start, end - start);		
+					
+					status.close();	
+
+					cout << "pid: " << pid << "    ppid: " << ppid << endl;
+				}
 			}
 			else if(count != -1)
 				cout << "Error calling readlink()\n";
 		}
 	}
-
 	closedir(pdir);
 
 	return 0;
