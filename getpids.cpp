@@ -7,7 +7,6 @@
 #include <cerrno>
 #include <cstdio>
 #include <fstream>
-#include <sstream>
 
 using namespace std;
 
@@ -41,7 +40,6 @@ int main(int argc, char *argv[]) {
 			if(count >= 0) { 
 				buf[count] = '\0';
 				target = buf;	
-				ppid; 
 
 				if(target.find("sudo") != npos) {
 					//get ppid of current process
@@ -58,10 +56,20 @@ int main(int argc, char *argv[]) {
 					start = result.find("PPid:") + 5;
 					end = result.find("Tracer");
 					ppid = result.substr(start, end - start);		
-					
+				
+					//get target for ppid symlink
+					path = "/proc/" + ppid + "/exe";
+					c_path = path.c_str();
+					count = readlink(c_path, buf, sizeof(buf) - 1);
+
+					if(count >= 0)
+						buf[count] = '\0';
+					else
+						cout << "Error getting ppid target\n";
+
 					status.close();	
 
-					cout << "pid: " << pid << "    ppid: " << ppid << endl;
+					cout << "pid: " << pid << "    ppid: " << ppid << "    " << buf << endl;
 				}
 			}
 			else if(count != -1)
